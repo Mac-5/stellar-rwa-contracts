@@ -10,6 +10,9 @@
 //! Valuation is stored in USD cents (`i128`). Amounts are integer token units in
 //! the token's own `decimals` base.
 
+#[cfg(test)]
+extern crate std;
+
 use soroban_sdk::{
     contract, contractclient, contracterror, contractimpl, contracttype, symbol_short, Address,
     Env, String, Vec,

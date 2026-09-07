@@ -112,9 +112,13 @@ fn test_version() {
 fn test_create_distribution_escrows_funds() {
     let ctx = setup();
     let div_addr = ctx.dividend.address.clone();
-    let id = ctx
-        .dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
+    let id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
     assert_eq!(id, 1);
     assert_eq!(pay_balance(&ctx, &div_addr), 1000);
     let d = ctx.dividend.get_distribution(&id);
@@ -126,9 +130,13 @@ fn test_create_distribution_escrows_funds() {
 #[test]
 fn test_claim_is_proportional() {
     let ctx = setup();
-    let id = ctx
-        .dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
+    let id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
     // h1 holds 300/1000 -> 300; h2 holds 200/1000 -> 200.
     assert_eq!(ctx.dividend.claimable(&id, &ctx.h1), 300);
     assert_eq!(ctx.dividend.claimable(&id, &ctx.h2), 200);
@@ -163,17 +171,17 @@ proptest! {
             &snapshot,
         );
 
-        let mut received = vec![0i128; snapshot.len() as usize];
+        let mut received = std::vec![0i128; snapshot.len() as usize];
         for step in steps {
             let idx = (step as usize) % snapshot.len() as usize;
             let (holder, balance) = snapshot.get(idx as u32).unwrap();
             if received[idx] > 0 {
                 continue;
             }
-            let expected_share = total_amount.checked_mul(*balance).unwrap() / 1_000;
-            let claimable = ctx.dividend.claimable(&id, holder);
+            let expected_share = total_amount.checked_mul(balance).unwrap() / 1_000;
+            let claimable = ctx.dividend.claimable(&id, &holder);
             if claimable > 0 {
-                ctx.dividend.claim(&id, holder);
+                ctx.dividend.claim(&id, &holder);
                 received[idx] = claimable;
                 assert!(received[idx] <= expected_share);
             }
@@ -185,9 +193,13 @@ proptest! {
 #[should_panic(expected = "Error(Contract, #7)")]
 fn test_double_claim_rejected() {
     let ctx = setup();
-    let id = ctx
-        .dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
+    let id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
     ctx.dividend.claim(&id, &ctx.h1);
     ctx.dividend.claim(&id, &ctx.h1);
 }
@@ -196,9 +208,13 @@ fn test_double_claim_rejected() {
 #[should_panic(expected = "Error(Contract, #6)")]
 fn test_nonholder_nothing_to_claim() {
     let ctx = setup();
-    let id = ctx
-        .dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
+    let id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
     let stranger = Address::generate(&ctx.env);
     ctx.dividend.claim(&id, &stranger);
 }
@@ -208,8 +224,13 @@ fn test_nonholder_nothing_to_claim() {
 fn test_create_requires_admin() {
     let ctx = setup();
     let impostor = Address::generate(&ctx.env);
-    ctx.dividend
-        .create_distribution(&impostor, &ctx.asset_id, &ctx.pay_id, &1000, &Vec::new(&ctx.env));
+    ctx.dividend.create_distribution(
+        &impostor,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &Vec::new(&ctx.env),
+    );
 }
 
 // ---- issue #165: `claimable` must guard `total_amount * balance` against
@@ -266,8 +287,13 @@ fn test_claimable_overflow_guarded() {
 #[should_panic(expected = "Error(Contract, #5)")]
 fn test_zero_amount_rejected() {
     let ctx = setup();
-    ctx.dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &0, &Vec::new(&ctx.env));
+    ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &0,
+        &Vec::new(&ctx.env),
+    );
 }
 
 #[test]
@@ -280,10 +306,20 @@ fn test_missing_distribution() {
 #[test]
 fn test_get_distributions_for_asset() {
     let ctx = setup();
-    ctx.dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
-    ctx.dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &500, &eligible(&ctx));
+    ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
+    ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &500,
+        &eligible(&ctx),
+    );
     let other_asset = Address::generate(&ctx.env);
     assert_eq!(
         ctx.dividend
@@ -307,12 +343,27 @@ fn test_get_distributions_for_asset_scoped_per_asset() {
     let mut other_eligible = Vec::new(&ctx.env);
     other_eligible.push_back((ctx.admin.clone(), 1000));
     // 3 distributions for the main asset, 2 for a different asset.
-    ctx.dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
-    ctx.dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &500, &eligible(&ctx));
-    ctx.dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &250, &eligible(&ctx));
+    ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
+    ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &500,
+        &eligible(&ctx),
+    );
+    ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &250,
+        &eligible(&ctx),
+    );
     ctx.dividend
         .create_distribution(&ctx.admin, &other_asset, &ctx.pay_id, &100, &other_eligible);
     ctx.dividend
@@ -353,9 +404,13 @@ fn env_register_asset(ctx: &Ctx, supply: i128) -> Address {
 #[test]
 fn test_full_distribution_completes() {
     let ctx = setup();
-    let id = ctx
-        .dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
+    let id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
     ctx.dividend.claim(&id, &ctx.h1); // 300
     ctx.dividend.claim(&id, &ctx.h2); // 200
     ctx.dividend.claim(&id, &ctx.admin); // 500
@@ -393,8 +448,13 @@ fn test_create_distribution_zero_supply_rejected() {
         &0i128,
     );
 
-    ctx.dividend
-        .create_distribution(&ctx.admin, &zero_asset_id, &ctx.pay_id, &1000, &Vec::new(&ctx.env));
+    ctx.dividend.create_distribution(
+        &ctx.admin,
+        &zero_asset_id,
+        &ctx.pay_id,
+        &1000,
+        &Vec::new(&ctx.env),
+    );
 }
 
 // ---- issue #120: cross-contract auth propagation ----
@@ -402,8 +462,13 @@ fn test_create_distribution_zero_supply_rejected() {
 #[test]
 fn test_create_distribution_auth_tree() {
     let ctx = setup();
-    ctx.dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
+    ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
 
     let auths = ctx.env.auths();
     assert_eq!(auths.len(), 1);
@@ -431,9 +496,13 @@ fn test_create_distribution_auth_tree() {
 #[test]
 fn test_claim_requires_only_holder_auth() {
     let ctx = setup();
-    let id = ctx
-        .dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
+    let id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
 
     ctx.dividend.claim(&id, &ctx.h1);
 
@@ -522,9 +591,13 @@ fn test_claim_on_nonexistent_distribution_fails() {
 #[test]
 fn test_has_claimed_flips_once_and_second_claim_moves_no_funds() {
     let ctx = setup();
-    let id = ctx
-        .dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
+    let id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
 
     assert!(!ctx.dividend.has_claimed(&id, &ctx.h1));
 
@@ -584,12 +657,20 @@ fn test_distributions_for_one_asset_excluded_from_another() {
     let mut other_eligible = Vec::new(&ctx.env);
     other_eligible.push_back((ctx.admin.clone(), 1000));
 
-    let main_id = ctx
-        .dividend
-        .create_distribution(&ctx.admin, &ctx.asset_id, &ctx.pay_id, &1000, &eligible(&ctx));
-    let other_id =
-        ctx.dividend
-            .create_distribution(&ctx.admin, &other_asset, &ctx.pay_id, &100, &other_eligible);
+    let main_id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &ctx.asset_id,
+        &ctx.pay_id,
+        &1000,
+        &eligible(&ctx),
+    );
+    let other_id = ctx.dividend.create_distribution(
+        &ctx.admin,
+        &other_asset,
+        &ctx.pay_id,
+        &100,
+        &other_eligible,
+    );
 
     let main_list = ctx.dividend.get_distributions_for_asset(&ctx.asset_id);
     let other_list = ctx.dividend.get_distributions_for_asset(&other_asset);

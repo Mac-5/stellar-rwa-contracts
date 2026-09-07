@@ -11,6 +11,9 @@
 //! post-creation transfers from inflating or diluting any holder's claim.
 //! `created_at` records the ledger at which the distribution was created for reference.
 
+#[cfg(test)]
+extern crate std;
+
 use soroban_sdk::{
     contract, contractclient, contracterror, contractimpl, contracttype, symbol_short, Address,
     Env, Map, Vec,
@@ -257,8 +260,7 @@ impl DividendContract {
         }
         // Proportional share, floored by integer division. Guard the
         // multiplication against i128 overflow (issue #165).
-        dist
-            .total_amount
+        dist.total_amount
             .checked_mul(basis)
             .unwrap_or_else(|| panic_err(&env, Error::ArithmeticOverflow))
             / supply

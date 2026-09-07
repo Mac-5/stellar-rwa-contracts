@@ -192,7 +192,7 @@ proptest! {
             approve(&s.env, &s.compliance, &s.admin, holder);
         }
 
-        let mut expected = vec![0i128; holders.len()];
+        let mut expected = std::vec![0i128; holders.len()];
         expected[0] = 1_000;
 
         for op in ops {
@@ -292,11 +292,11 @@ proptest! {
             match action {
                 0 => {
                     let res = s.token.try_transfer(&holders[subject], &holders[other], &amount);
-                    assert!(matches!(res, Err(Ok(Error::Paused))));
+                    assert_eq!(res, Err(Ok(Error::Paused.into())));
                 }
                 1 => {
                     let res = s.token.try_mint(&s.admin, &holders[subject], &amount);
-                    assert!(matches!(res, Err(Ok(Error::Paused))));
+                    assert_eq!(res, Err(Ok(Error::Paused.into())));
                 }
                 2 => {
                     let mut recipients = Vec::new(&s.env);
@@ -306,11 +306,11 @@ proptest! {
                         recipients.push_back((holders[target].clone(), payout));
                     }
                     let res = s.token.try_mint_batch(&s.admin, &recipients);
-                    assert!(matches!(res, Err(Ok(Error::Paused))));
+                    assert_eq!(res, Err(Ok(Error::Paused.into())));
                 }
                 _ => {
                     let res = s.token.try_burn(&holders[subject], &amount);
-                    assert!(matches!(res, Err(Ok(Error::Paused))));
+                    assert_eq!(res, Err(Ok(Error::Paused.into())));
                 }
             }
 
@@ -727,18 +727,36 @@ fn test_get_metadata_reflects_all_mutations() {
     let meta = s.token.get_metadata();
 
     // Fields touched by the setters above.
-    assert_eq!(meta.valuation, 99_000_000,       "valuation not updated");
-    assert!(!meta.paused,                         "paused flag should be false after unpause");
-    assert_eq!(meta.compliance_contract, comp2_id,"compliance_contract not switched");
-    assert_eq!(meta.total_supply, 1_500,          "total_supply not updated after mint");
+    assert_eq!(meta.valuation, 99_000_000, "valuation not updated");
+    assert!(!meta.paused, "paused flag should be false after unpause");
+    assert_eq!(
+        meta.compliance_contract, comp2_id,
+        "compliance_contract not switched"
+    );
+    assert_eq!(
+        meta.total_supply, 1_500,
+        "total_supply not updated after mint"
+    );
 
     // Fields that must be unchanged — another setter silently clobbering one
     // of these would be caught here but not by the individual setter tests.
-    assert_eq!(meta.name,         String::from_str(&s.env, "Manhattan Loft"), "name was clobbered");
-    assert_eq!(meta.symbol,       String::from_str(&s.env, "MLOFT"),          "symbol was clobbered");
-    assert_eq!(meta.asset_type,   String::from_str(&s.env, "real_estate"),    "asset_type was clobbered");
-    assert_eq!(meta.decimals,     2u32,                                        "decimals was clobbered");
-    assert_eq!(meta.admin,        s.admin,                                     "admin was clobbered");
+    assert_eq!(
+        meta.name,
+        String::from_str(&s.env, "Manhattan Loft"),
+        "name was clobbered"
+    );
+    assert_eq!(
+        meta.symbol,
+        String::from_str(&s.env, "MLOFT"),
+        "symbol was clobbered"
+    );
+    assert_eq!(
+        meta.asset_type,
+        String::from_str(&s.env, "real_estate"),
+        "asset_type was clobbered"
+    );
+    assert_eq!(meta.decimals, 2u32, "decimals was clobbered");
+    assert_eq!(meta.admin, s.admin, "admin was clobbered");
     assert_eq!(
         meta.asset_description,
         String::from_str(&s.env, "A tokenized NYC loft"),
@@ -784,4 +802,3 @@ fn test_total_supply_tracks_mint_burn_mint_batch() {
     // The metadata-reported supply stays in lockstep with the direct ABI read.
     assert_eq!(s.token.get_metadata().total_supply, s.token.total_supply());
 }
-

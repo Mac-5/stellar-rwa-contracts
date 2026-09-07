@@ -307,10 +307,10 @@ fn test_get_allowlist_page_rollover() {
     let us = String::from_str(&env, "US");
 
     // Add 250 addresses to force page rollover (200 + 1 = 201 > ALLOWLIST_PAGE_SIZE)
-    let mut users = Vec::new();
+    let mut users = Vec::new(&env);
     for _i in 0..250 {
         let user = Address::generate(&env);
-        users.push(user.clone());
+        users.push_back(user.clone());
         client.add_to_allowlist(&admin, &user, &us, &0);
     }
 
